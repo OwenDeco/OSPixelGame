@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PixelPlatformer - local test</title>
+<style>
+  body { margin: 0; background: #12122a; color: #eee; font: 14px system-ui, sans-serif; padding: 16px; }
+  #host { max-width: 960px; margin: 0 auto; }
+  .bar { max-width: 960px; margin: 0 auto 12px; display: flex; gap: 8px; align-items: center; }
+  #log { max-width: 960px; margin: 12px auto; font-family: monospace; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <button data-l="level1">Level 1</button>
+  <button data-l="level2">Level 2</button>
+</div>
+<div id="host"></div>
+<div id="log"></div>
+<script src="dist/pixelplatformer.js"></script>
+<script>
+  var LEVELS = {};
+  function log(m) { document.getElementById('log').textContent += m + '\n'; }
+  function start(name) {
+    window.game = PixelPlatformer.mount('host', {
+      level: LEVELS[name],
+      onComplete: function (r) { log('COMPLETE ' + JSON.stringify(r)); },
+      onGameOver: function (r) { log('GAME OVER ' + JSON.stringify(r)); }
+    });
+  }
+  Promise.all(['level1', 'level2'].map(function (n) {
+    return fetch('levels/' + n + '.json').then(function (r) { return r.json(); }).then(function (j) { LEVELS[n] = j; });
+  })).then(function () { start(location.hash.slice(1) || 'level1'); });
+  document.querySelectorAll('button').forEach(function (b) { b.onclick = function () { start(b.dataset.l); b.blur(); }; });
+</script>
+</body>
+</html>
