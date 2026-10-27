@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BeatForge local test</title>
+<link rel="icon" href="data:,">
+<style>
+  body { margin: 0; background: #05030f; color: #eee; font-family: system-ui, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  .links { font-size: 12px; opacity: .6; margin-bottom: 8px; }
+  .links a { color: #9cf; margin-right: 12px; }
+</style>
+<script>window.__pre = Object.keys(window);</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.__preBF = Object.keys(window);</script>
+<script src="dist/beatforge.js"></script>
+<script>window.__postBF = Object.keys(window);</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="links"><a href="?mode=studio">studio</a><a href="?mode=listen">listen</a><a href="?azure=1">studio + fake Azure voice</a></div>
+  <div id="app"></div>
+</div>
+<script>
+  // Fake OutSystems host: canned AI answers, saves, optional fake Azure voice.
+  var params = new URLSearchParams(location.search);
+  var log = window.__hostLog = [];
+  function canned(kind, prompt, spec) {
+    var s = JSON.parse(spec);
+    if (kind === 'enhance') { s.fx.reverb = Math.min(1, s.fx.reverb + 0.2); s.melody.on = true; s.name = s.name + ' (enhanced)'; return s; }
+    return {
+      version: 1, name: 'AI: ' + (prompt || 'Night Drive').slice(0, 30), bpm: 96, key: 'E', scale: 'minor', swing: 0.18, visual: 'galaxy',
+      fx: { reverb: 0.4, delay: 0.25, lofi: 0.2 },
+      drums: { on: true, kit: '808', kick: [1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0], snare: [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0], hat: [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,1], clap: [0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0], perc: [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0], vol: 0.85 },
+      bass: { on: true, sound: 'wobble', notes: [1,0,0,0,0,0,1,0,0,0,5,0,0,0,0,0], vol: 0.7 },
+      chords: { on: true, sound: 'pad', progression: [1,6,3,7], vol: 0.5 },
+      melody: { on: true, sound: 'bell', notes: [8,0,0,10,0,0,12,0,0,0,10,0,8,0,7,0], vol: 0.45 },
+      voice: { mode: 'ooh', vol: 0.6 }, lyrics: ''
+    };
+  }
+  var opts = {
+    spec: '',
+    mode: params.get('mode') === 'listen' ? 'listen' : 'studio',
+    onAIRequest: function (kind, prompt, spec) {
+      log.push(['ai', kind, prompt]);
+      setTimeout(function () {
+        if (kind === 'lyrics') BeatForge.setLyrics('City lights are calling\nI can hear the bassline\nWe keep moving through the night\nNeon hearts in overdrive');
+        else { BeatForge.applySpec(JSON.stringify(canned(kind, prompt, spec))); BeatForge.notify(kind === 'enhance' ? 'Enhanced!' : 'Here is your song', 'success'); }
+      }, 1000);
+    },
+    onSave: function (name, spec) { log.push(['save', name, spec.length]); setTimeout(function () { BeatForge.notify('Saved "' + name + '"', 'success'); }, 300); },
+    onChange: function (spec) { log.push(['change', spec.length]); }
+  };
+  if (params.get('azure')) {
+    // Fake Azure: answer each line with a synthetic "voice" (vowel-ish buzz with a pitch glide) as a WAV.
+    opts.onVoiceRequest = function (linesJson, voiceName) {
+      log.push(['voice', linesJson, voiceName]);
+      var lines = JSON.parse(linesJson);
+      lines.forEach(function (line, i) { setTimeout(function () { BeatForge.setVocalAudio(i, fakeWav(line.length), 'audio/wav'); }, 300 + i * 100); });
+    };
+  }
+  function fakeWav(nchar) {
+    var sr = 16000, n = Math.round(sr * Math.min(3, 0.6 + nchar * 0.06)), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf), ph = 0;
+    function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) {
+      var t = i / sr, f = 180 + 40 * Math.sin(t * 3), syl = 0.5 + 0.5 * Math.sin(t * Math.PI * 4);
+      ph += 2 * Math.PI * f / sr;
+      var s = (Math.sin(ph) + 0.5 * Math.sin(2 * ph) + 0.3 * Math.sin(3 * ph)) * 0.3 * syl;
+      v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 32767, true);
+    }
+    var bytes = new Uint8Array(buf), bin = '';
+    for (var j = 0; j < bytes.length; j++) bin += String.fromCharCode(bytes[j]);
+    return btoa(bin);
+  }
+  window.__inst = BeatForge.mount('app', opts);
+</script>
+</body>
+</html>
