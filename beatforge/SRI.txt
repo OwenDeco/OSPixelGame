@@ -1,0 +1,13 @@
+BeatForge SRI hashes (sha384, base64) computed from the bytes actually served by the CDNs.
+Load in this order, each with crossorigin="anonymous".
+
+https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js
+sha384-c6Uo4N9c3SOEigMVzP6IshUG1wQ5uMp3xeoQFiHWAQ86joWdgyajkvopySyKy/Z6
+
+https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu
+
+https://cdn.jsdelivr.net/gh/OwenDeco/OSPixelGame@beatforge-v1.0.1/beatforge/dist/beatforge.js
+sha384-ZySM3ZBsLjJaj+h8GdR1ORTo0KQcrJDwN8WxMK5w2q3V7Y4I5OtFml3786IoxjE3
+
+Note: tag beatforge-v1.0.0 points to a commit without the engine (pushed by mistake); do not use it.
